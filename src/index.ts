@@ -155,6 +155,26 @@ function getParentPath(resourcePath: string): string {
 	return normalizedPath.split('/').slice(0, -1).join('/');
 }
 
+async function createParentDirectories(bucket: R2Bucket, dirpath: string): Promise<void> {
+	// Split the path and create all parent directories recursively
+	let parts = dirpath.split('/').filter(p => p !== '');
+	let currentPath = '';
+
+	for (let part of parts) {
+		currentPath = currentPath ? `${currentPath}/${part}` : part;
+		let existing = await bucket.head(currentPath);
+
+		if (!existing || existing.customMetadata?.resourcetype !== '<collection />') {
+			// Create directory marker
+			await bucket.put(currentPath, new ArrayBuffer(0), {
+				customMetadata: {
+					resourcetype: '<collection />',
+				},
+			});
+		}
+	}
+}
+
 async function hasCollectionResource(bucket: R2Bucket, resourcePath: string): Promise<boolean> {
 	if (resourcePath === '') {
 		return true;
@@ -831,12 +851,13 @@ async function handle_put(request: Request, bucket: R2Bucket): Promise<Response>
 	}
 	let existing = await bucket.head(resource_path);
 
-	// Check if the parent directory exists
+	// Auto-create parent directories if they don't exist
 	let dirpath = getParentPath(resource_path);
 	if (dirpath !== '') {
 		let dir = await bucket.head(dirpath);
-		if (!(dir && dir.customMetadata?.resourcetype === '<collection />')) {
-			return new Response('Conflict', { status: 409 });
+		if (!dir || dir.customMetadata?.resourcetype !== '<collection />') {
+			// Recursively create all parent directories
+			await createParentDirectories(bucket, dirpath);
 		}
 	}
 
