@@ -793,9 +793,10 @@ async function handle_get(request: Request, bucket: R2Bucket): Promise<Response>
 			headers: { 'Content-Type': 'text/html; charset=utf-8' },
 		});
 	} else {
+		const rangeHeader = request.headers.get('range');
 		let object = await bucket.get(resource_path, {
 			onlyIf: request.headers,
-			range: request.headers,
+			...(rangeHeader ? { range: request.headers } : {}),
 		});
 
 		let isR2ObjectBody = (object: R2Object | R2ObjectBody): object is R2ObjectBody => {
