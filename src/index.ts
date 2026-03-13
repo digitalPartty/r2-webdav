@@ -1580,11 +1580,12 @@ const SUPPORT_METHODS = [
 async function dispatch_handler(request: Request, bucket: R2Bucket): Promise<Response> {
 	switch (request.method) {
 		case 'OPTIONS': {
-			return new Response(null, {
-				status: 204,
+			return new Response('', {
+				status: 200,
 				headers: {
 					Allow: SUPPORT_METHODS.join(', '),
 					DAV: DAV_CLASS,
+					'Content-Length': '0',
 				},
 			});
 		}
