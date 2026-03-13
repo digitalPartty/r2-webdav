@@ -155,6 +155,33 @@ function getParentPath(resourcePath: string): string {
 	return normalizedPath.split('/').slice(0, -1).join('/');
 }
 
+function extractHttpMetadata(headers: Headers): R2HTTPMetadata {
+	const metadata: R2HTTPMetadata = {};
+
+	const contentType = headers.get('content-type');
+	if (contentType) metadata.contentType = contentType;
+
+	const contentLanguage = headers.get('content-language');
+	if (contentLanguage) metadata.contentLanguage = contentLanguage;
+
+	const contentDisposition = headers.get('content-disposition');
+	if (contentDisposition) metadata.contentDisposition = contentDisposition;
+
+	const contentEncoding = headers.get('content-encoding');
+	if (contentEncoding) metadata.contentEncoding = contentEncoding;
+
+	const cacheControl = headers.get('cache-control');
+	if (cacheControl) metadata.cacheControl = cacheControl;
+
+	const cacheExpiry = headers.get('expires');
+	if (cacheExpiry) {
+		const date = new Date(cacheExpiry);
+		if (!isNaN(date.getTime())) metadata.cacheExpiry = date;
+	}
+
+	return metadata;
+}
+
 async function createParentDirectories(bucket: R2Bucket, dirpath: string): Promise<void> {
 	// Split the path and create all parent directories recursively
 	let parts = dirpath.split('/').filter(p => p !== '');
@@ -863,7 +890,7 @@ async function handle_put(request: Request, bucket: R2Bucket): Promise<Response>
 
 	let body = await request.arrayBuffer();
 	await bucket.put(resource_path, body, {
-		httpMetadata: request.headers,
+		httpMetadata: extractHttpMetadata(request.headers),
 		customMetadata: getPreservedCustomMetadata(existing?.customMetadata),
 	});
 	return existing === null ? new Response('', { status: 201 }) : new Response(null, { status: 204 });
@@ -948,7 +975,7 @@ async function handle_mkcol(request: Request, bucket: R2Bucket): Promise<Respons
 	}
 
 	await bucket.put(resource_path, new Uint8Array(), {
-		httpMetadata: request.headers,
+		httpMetadata: extractHttpMetadata(request.headers),
 		customMetadata: { resourcetype: '<collection />' },
 	});
 	return new Response('', { status: 201 });
