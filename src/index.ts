@@ -863,7 +863,6 @@ async function handle_put(request: Request, bucket: R2Bucket): Promise<Response>
 
 	let body = await request.arrayBuffer();
 	await bucket.put(resource_path, body, {
-		onlyIf: request.headers,
 		httpMetadata: request.headers,
 		customMetadata: getPreservedCustomMetadata(existing?.customMetadata),
 	});
